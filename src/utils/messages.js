@@ -1,6 +1,6 @@
-const generateMessageAndLocation = (userName, text) => {
+const generateMessageAndLocation = (username, text) => {
     return {
-        userName,
+        username,
         text,
         createdAt: new Date().getTime()
     }

@@ -30,7 +30,7 @@ const autoscroll = () => {
 
 socket.on('message', (message) => {
     const html = Mustache.render(messageTemplate, {
-        username,
+        username: message.username,
         message: message.text,
         createdAt: moment(message.createdAt).format('hh:mm a')
     });
@@ -40,7 +40,7 @@ socket.on('message', (message) => {
 
 socket.on('location', (location) => {
     const html = Mustache.render(locationTemplate, {
-        username,
+        username: location.username,
         location: location.text,
         createdAt: moment(location.createdAt).format('hh:mm a')
     });
