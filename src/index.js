@@ -1,4 +1,5 @@
 const { generateMessageAndLocation } = require('./utils/messages');
+const { addUser, getUserById, getRoomUsersByRoomName, removeUser } = require('./utils/users');
 const path = require('path');
 const http = require('http');
 const express = require('express');
@@ -16,24 +17,41 @@ app.use(express.static(publicDirectoryPath));
 let message = 'Welcome!';
 
 io.on('connection', (socket) => {
-
-    socket.on('join', ({ username, room }) => {
-        socket.join(room);
-        socket.emit('message', generateMessageAndLocation(message));
-        socket.broadcast.to(room).emit('message', generateMessageAndLocation(`${username} has joined!`));
+    socket.on('join', (options, callback) => {
+        const { errorMessage, user } = addUser({ id: socket.id, ...options });
+        if (errorMessage) {
+            return callback(errorMessage);
+        }
+        socket.join(user.room);
+        socket.emit('message', generateMessageAndLocation(user.username, message));
+        socket.broadcast.to(user.room).emit('message', generateMessageAndLocation(user.username, `${user.username} has joined!`));
+        io.to(user.room).emit('roomData', {
+            room: user.room,
+            users: getRoomUsersByRoomName(user.room)
+        });
+        callback();
     });
 
     socket.on('SendMessage', (message, callback) => {
-        io.emit('message', generateMessageAndLocation(message));
+        const user = getUserById(socket.id);
+        io.to(user.room).emit('message', generateMessageAndLocation(user.username, message));
         callback('Delivered');
     });
 
     socket.on('disconnect', () => {
-        io.emit('message', generateMessageAndLocation('A User Has disconnected...'))
+        const user = removeUser(socket.id);
+        if (user) {
+            io.to(user.room).emit('message', generateMessageAndLocation(user.username, `${user.username} has disconnected...`));
+            io.to(user.room).emit('roomData', {
+                room: user.room,
+                users: getRoomUsersByRoomName(user.room)
+            });
+        }
     });
 
     socket.on('ShareLocation', (location, callback) => {
-        io.emit('location', generateMessageAndLocation(`https://google.com/maps?q=${location.latitude},${location.longitude}`));
+        const user = getUserById(socket.id)
+        io.to(user.room).emit('location', generateMessageAndLocation(user.username, `https://google.com/maps?q=${location.latitude},${location.longitude}`));
         callback();
     });
 });
